@@ -1,0 +1,106 @@
+const express = require("express"); //설치한 express 패키지를 현재 파일로 불러오는 코드     require("express"): Express 패키지를 가져옴
+const cors = require("cors"); // 설치한 cors 패키지를 가져옴
+
+const app = express(); //Express 애플리케이션 객체를 생성
+const PORT = 3000; //
+const todos = [
+  {
+    id: 1,
+    text: "공부하기",
+    completed: false,
+  },
+];
+
+app.use(cors()); // CORS 설정을 Express에 적용
+app.use(express.json());
+// 클라이언트가 JSON 형식의 데이터를 보내면 Express가 읽을 수 있도록 변환해주는 미들웨어
+// 클라이언트가 보낸 JSON 데이터를 req.body로 사용할 수 있게 해준다.
+
+/*app.post("/todos", (req, res) => {
+  const { text } = req.body;
+  //객체의 구조분해할당 - 객체 안에 있는 값을 꺼내서 같은 이름의 변수로 만드는 것
+
+  console.log(text);
+  
+});
+*/
+app.get("/todos/:id", (req, res) => {
+  const id = Number(req.params.id);
+  const todo = todos.find((todo) => {
+    return todo.id === id;
+  });
+
+  if (!todo) {
+    return res.status(404).json({
+      message: "Todo를 찾을 수 없습니다.",
+    });
+  }
+
+  res.json(todo);
+});
+
+app.patch("/todos/:id", (req, res) => {
+  const id = Number(req.params.id);
+  const { completed } = req.body;
+
+  const todo = todos.find((todo) => {
+    return todo.id === id;
+  });
+
+  if (!todo) {
+    return res.status(404).json({
+      message: "Todo를 찾을 수 없습니다.",
+    });
+  }
+
+  todo.completed = completed;
+
+  res.json(todo);
+});
+
+app.post("/todos", (req, res) => {
+  const { text } = req.body; //req로 받는건 body밖에 없나?
+
+  const newTodo = {
+    id: todos.length + 1,
+    text: text,
+    completed: false,
+  };
+
+  todos.push(newTodo);
+  res.json(newTodo);
+});
+
+app.delete("/todos/:id", (req, res) => {
+  const id = Number(req.params.id);
+  const todoIndex = todos.findIndex((todo) => {
+    return todo.id === id;
+  }); // findIndex 는 return 조건에 맞는 인덱스값을 추출, 조건에 맞는 값 없으면 -1 반환
+
+  if (todoIndex === -1) {
+    return res.status(404).json({
+      message: "Todo를 찾을 수 없음",
+    });
+  }
+
+  const deletedTodo = todos.splice(todoIndex, 1)[0];
+  // splice(a, b) - 인덱스 a 위치부터 b개를 제거
+
+  res.json(deletedTodo);
+  // 근데 제거한 객체를 반환할 필요가 있나 ?
+});
+
+app.get("/", (req, res) => {
+  res.json({ message: "My Todo API" });
+});
+//루트 주소에 대한 GET API
+// "/"는 주소 (req, res) req는 사용자가 보낸 모든 정보가 들어있는 객체 res는 보내는 응답
+
+app.get("/todos", (req, res) => {
+  res.json(todos);
+});
+//”/todos” 주소로 GET 요청이 오면, 요청(req)을 받고 빈 배열([])을 JSON 형식으로 응답(res)해라.
+
+app.listen(PORT, () => {
+  console.log(`Server running on http://localhost:${PORT}`);
+});
