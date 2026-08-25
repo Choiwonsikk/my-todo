@@ -1,5 +1,9 @@
+require("dotenv").config();
+
 const express = require("express"); //설치한 express 패키지를 현재 파일로 불러오는 코드     require("express"): Express 패키지를 가져옴
 const cors = require("cors"); // 설치한 cors 패키지를 가져옴
+const mysql = require("mysql2");
+// mysql이라는 변수를 통해 MySQL 드라이버의 기능을 사용
 
 const app = express(); //Express 애플리케이션 객체를 생성
 const PORT = 3000; //
@@ -16,6 +20,21 @@ app.use(express.json());
 // 클라이언트가 JSON 형식의 데이터를 보내면 Express가 읽을 수 있도록 변환해주는 미들웨어
 // 클라이언트가 보낸 JSON 데이터를 req.body로 사용할 수 있게 해준다.
 
+const db = mysql.createConnection({
+  host: process.env.DB_HOST,
+  user: process.env.DB_USER,
+  password: process.env.DB_PASSWORD,
+  database: process.env.DB_NAME,
+});
+db.connect((err) => {
+  if (err) {
+    console.error("MySQL 연결 실패:", err);
+    return;
+  }
+
+  console.log("MySQL 연결 성공");
+});
+
 /*app.post("/todos", (req, res) => {
   const { text } = req.body;
   //객체의 구조분해할당 - 객체 안에 있는 값을 꺼내서 같은 이름의 변수로 만드는 것
@@ -26,18 +45,40 @@ app.use(express.json());
 */
 app.get("/todos/:id", (req, res) => {
   const id = Number(req.params.id);
-  const todo = todos.find((todo) => {
-    return todo.id === id;
+
+  db.query("SELECT * FROM todos WHERE id = ?", [id], (err, results) => {
+    if (err) {
+      console.error(err);
+      return res.status(500).json({
+        message: "데이터 조회 실패",
+      });
+    }
+
+    if (results.length === 0) {
+      return res.status(404).json({
+        message: "Todo를 찾을 수 없습니다.",
+      });
+    }
+
+    res.json(results[0]);
   });
-
-  if (!todo) {
-    return res.status(404).json({
-      message: "Todo를 찾을 수 없습니다.",
-    });
-  }
-
-  res.json(todo);
 });
+// id에 해당하는 객체 전체 출력
+
+// app.get("/todos/:id", (req, res) => {
+//   const id = Number(req.params.id);
+//   const todo = todos.find((todo) => {
+//     return todo.id === id;
+//   });
+
+//   if (!todo) {
+//     return res.status(404).json({
+//       message: "Todo를 찾을 수 없습니다.",
+//     });
+//   }
+
+//   res.json(todo);
+// });
 
 app.patch("/todos/:id", (req, res) => {
   const id = Number(req.params.id);
@@ -97,8 +138,22 @@ app.get("/", (req, res) => {
 // "/"는 주소 (req, res) req는 사용자가 보낸 모든 정보가 들어있는 객체 res는 보내는 응답
 
 app.get("/todos", (req, res) => {
-  res.json(todos);
+  db.query("SELECT * FROM todos", (err, results) => {
+    if (err) {
+      console.error(err);
+      return res.status(500).json({
+        message: "데이터 조회 실패",
+      });
+    }
+
+    res.json(results);
+  });
 });
+// 전체 배열 출력
+
+// app.get("/todos", (req, res) => {
+//   res.json(todos);
+// });
 //”/todos” 주소로 GET 요청이 오면, 요청(req)을 받고 빈 배열([])을 JSON 형식으로 응답(res)해라.
 
 app.listen(PORT, () => {
