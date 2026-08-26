@@ -6,14 +6,7 @@ const mysql = require("mysql2");
 // mysql이라는 변수를 통해 MySQL 드라이버의 기능을 사용
 
 const app = express(); //Express 애플리케이션 객체를 생성
-const PORT = 3000; //
-const todos = [
-  {
-    id: 1,
-    text: "공부하기",
-    completed: false,
-  },
-];
+const PORT = 3000;
 
 app.use(cors()); // CORS 설정을 Express에 적용
 app.use(express.json());
@@ -84,52 +77,124 @@ app.patch("/todos/:id", (req, res) => {
   const id = Number(req.params.id);
   const { completed } = req.body;
 
-  const todo = todos.find((todo) => {
-    return todo.id === id;
-  });
+  db.query(
+    "UPDATE todos SET completed = ? WHERE id = ?",
+    [completed, id],
+    (err, result) => {
+      if (err) {
+        console.error(err);
+        return res.status(500).json({
+          message: "Todo 수정 실패",
+        });
+      }
+      if (result.affectedRows === 0) {
+        return res.status(404).json({
+          message: "Todo를 찾을 수 없습니다.",
+        });
+      }
 
-  if (!todo) {
-    return res.status(404).json({
-      message: "Todo를 찾을 수 없습니다.",
-    });
-  }
-
-  todo.completed = completed;
-
-  res.json(todo);
+      res.json({
+        id: id,
+        completed: completed,
+      });
+    },
+  );
 });
+
+// app.patch("/todos/:id", (req, res) => {
+//   const id = Number(req.params.id);
+//   const { completed } = req.body;
+
+//   const todo = todos.find((todo) => {
+//     return todo.id === id;
+//   });
+
+//   if (!todo) {
+//     return res.status(404).json({
+//       message: "Todo를 찾을 수 없습니다.",
+//     });
+//   }
+
+//   todo.completed = completed;
+
+//   res.json(todo);
+// });
 
 app.post("/todos", (req, res) => {
-  const { text } = req.body; //req로 받는건 body밖에 없나?
+  const { text } = req.body;
 
-  const newTodo = {
-    id: todos.length + 1,
-    text: text,
-    completed: false,
-  };
+  db.query("INSERT INTO todos (text) VALUES (?)", [text], (err, result) => {
+    if (err) {
+      console.error(err);
+      return res.status(500).json({
+        message: "Todo 생성 실패",
+      });
+    }
 
-  todos.push(newTodo);
-  res.json(newTodo);
+    const newTodo = {
+      id: result.insertId,
+      text: text,
+      completed: false,
+    };
+    res.status(201).json(newTodo);
+  });
 });
+
+// app.post("/todos", (req, res) => {
+//   const { text } = req.body; //req로 받는건 body밖에 없나?
+
+//   const newTodo = {
+//     id: todos.length + 1,
+//     text: text,
+//     completed: false,
+//   };
+
+//   todos.push(newTodo);
+//   res.json(newTodo);
+// });
 
 app.delete("/todos/:id", (req, res) => {
   const id = Number(req.params.id);
-  const todoIndex = todos.findIndex((todo) => {
-    return todo.id === id;
-  }); // findIndex 는 return 조건에 맞는 인덱스값을 추출, 조건에 맞는 값 없으면 -1 반환
 
-  if (todoIndex === -1) {
-    return res.status(404).json({
-      message: "Todo를 찾을 수 없음",
+  db.query("DELETE FROM todos WHERE id = ?", [id], (err, result) => {
+    if (err) {
+      console.error(err);
+      return res.status(500).json({
+        message: "Todo 삭제 실패",
+      });
+    }
+
+    if (result.affectedRows === 0) {
+      return res.status(404).json({
+        message: "Todo를 찾을 수 없습니다.",
+      });
+    }
+
+    res.json({
+      id: id,
+      message: "Todo 삭제 성공",
     });
-  }
-
-  const deletedTodo = todos.splice(todoIndex, 1)[0];
-  // splice(a, b) - 인덱스 a 위치부터 b개를 제거
-
-  res.json(deletedTodo);
-  // 근데 제거한 객체를 반환할 필요가 있나 ?
+  });
 });
+
+// app.delete("/todos/:id", (req, res) => {
+//   const id = Number(req.params.id);
+//   const todoIndex = todos.findIndex((todo) => {
+//     return todo.id === id;
+//   }); // findIndex 는 return 조건에 맞는 인덱스값을 추출, 조건에 맞는 값 없으면 -1 반환
+
+//   if (todoIndex === -1) {
+//     return res.status(404).json({
+//       message: "Todo를 찾을 수 없음",
+//     });
+//   }
+
+//   const deletedTodo = todos.splice(todoIndex, 1)[0];
+//   // splice(a, b) - 인덱스 a 위치부터 b개를 제거
+
+//   res.json(deletedTodo);
+//   // 근데 제거한 객체를 반환할 필요가 있나 ?
+// });
 
 app.get("/", (req, res) => {
   res.json({ message: "My Todo API" });
