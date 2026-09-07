@@ -39,6 +39,12 @@ db.connect((err) => {
 app.get("/todos/:id", (req, res) => {
   const id = Number(req.params.id);
 
+  if (Number.isInteger(id) === false || id <= 0) {
+    return res.status(400).json({
+      message: "id는 1이상인 정수이어야 합니다",
+    });
+  }
+
   db.query("SELECT * FROM todos WHERE id = ?", [id], (err, results) => {
     if (err) {
       console.error(err);
@@ -75,30 +81,76 @@ app.get("/todos/:id", (req, res) => {
 
 app.patch("/todos/:id", (req, res) => {
   const id = Number(req.params.id);
-  const { completed } = req.body;
+  const { title, text, completed } = req.body;
 
-  db.query(
-    "UPDATE todos SET completed = ? WHERE id = ?",
-    [completed, id],
-    (err, result) => {
+  if (Number.isInteger(id) === false || id <= 0) {
+    return res.status(400).json({
+      message: "id는 1이상인 정수이어야 합니다",
+    });
+  }
+
+  const fields = [];
+  const values = [];
+
+  if (title !== undefined) {
+    if (typeof title !== "string" || title.trim() === "") {
+      return res.status(400).json({
+        message: "title은 비어 있지 않은 문자열이어야 합니다.",
+      });
+    }
+    fields.push("title = ?");
+    values.push(title);
+  }
+  if (text !== undefined) {
+    if (typeof text !== "string") {
+      return res.status(400).json({
+        message: "text는 문자열 형식이어야 합니다.",
+      });
+    }
+    fields.push("text = ?");
+    values.push(text);
+  }
+  if (completed !== undefined) {
+    if (typeof completed !== "boolean") {
+      return res.status(400).json({
+        message: "completed는 boolean 형식이어야 합니다.",
+      });
+    }
+    fields.push("completed = ?");
+    values.push(completed);
+  }
+  if (fields.length === 0) {
+    return res.status(400).json({
+      message: "입력값이 없습니다",
+    });
+  }
+  values.push(id);
+
+  const sql = `UPDATE todos SET ${fields.join(", ")} WHERE id = ?`; //
+
+  db.query(sql, values, (err, result) => {
+    if (err) {
+      console.error(err);
+      return res.status(500).json({
+        message: "Todo 수정 실패",
+      });
+    }
+    if (result.affectedRows === 0) {
+      return res.status(404).json({
+        message: "Todo를 찾을 수 없습니다.",
+      });
+    }
+
+    db.query("SELECT * FROM todos WHERE id = ?", [id], (err, results) => {
       if (err) {
         console.error(err);
         return res.status(500).json({
-          message: "Todo 수정 실패",
+          message: "id 조회 실패",
         });
       }
-      if (result.affectedRows === 0) {
-        return res.status(404).json({
-          message: "Todo를 찾을 수 없습니다.",
-        });
-      }
-
-      res.json({
-        id: id,
-        completed: completed,
-      });
-    },
-  );
+      res.json(results[0]);
+    });
+  });
 });
 
 // app.patch("/todos/:id", (req, res) => {
@@ -121,23 +173,41 @@ app.patch("/todos/:id", (req, res) => {
 // });
 
 app.post("/todos", (req, res) => {
-  const { text } = req.body;
+  const { title, text } = req.body;
 
-  db.query("INSERT INTO todos (text) VALUES (?)", [text], (err, result) => {
-    if (err) {
-      console.error(err);
-      return res.status(500).json({
-        message: "Todo 생성 실패",
+  if (title === undefined || typeof title !== "string" || title.trim() === "") {
+    return res.status(400).json({
+      message: "title은 비어 있지 않은 문자열이어야 합니다.",
+    });
+  }
+  if (text !== undefined) {
+    if (typeof text !== "string") {
+      return res.status(400).json({
+        message: "text는 문자열 형식이어야 합니다.",
       });
     }
+  }
 
-    const newTodo = {
-      id: result.insertId,
-      text: text,
-      completed: false,
-    };
-    res.status(201).json(newTodo);
-  });
+  db.query(
+    "INSERT INTO todos (title, text) VALUES (?,?)",
+    [title, text],
+    (err, result) => {
+      if (err) {
+        console.error(err);
+        return res.status(500).json({
+          message: "Todo 생성 실패",
+        });
+      }
+
+      const newTodo = {
+        id: result.insertId,
+        title: title,
+        text: text,
+        completed: false,
+      };
+      res.status(201).json(newTodo);
+    },
+  );
 });
 
 // app.post("/todos", (req, res) => {
@@ -155,6 +225,12 @@ app.post("/todos", (req, res) => {
 
 app.delete("/todos/:id", (req, res) => {
   const id = Number(req.params.id);
+
+  if (Number.isInteger(id) === false || id <= 0) {
+    return res.status(400).json({
+      message: "id는 1이상인 정수이어야 합니다",
+    });
+  }
 
   db.query("DELETE FROM todos WHERE id = ?", [id], (err, result) => {
     if (err) {
@@ -210,7 +286,6 @@ app.get("/todos", (req, res) => {
         message: "데이터 조회 실패",
       });
     }
-
     res.json(results);
   });
 });
