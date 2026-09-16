@@ -28,6 +28,12 @@ const db = mysql.createPool({
 //   console.log("MySQL 연결 성공");
 // });
 
+const catchAsync = (func) => {
+  return (req, res, next) => {
+    func(req, res).catch((err) => next(err));
+  };
+};
+
 /*app.post("/todos", (req, res) => {
   const { text } = req.body;
   //객체의 구조분해할당 - 객체 안에 있는 값을 꺼내서 같은 이름의 변수로 만드는 것
@@ -43,15 +49,17 @@ app.get("/", (req, res) => {
 //루트 주소에 대한 GET API
 // "/"는 주소 (req, res) req는 사용자가 보낸 모든 정보가 들어있는 객체 res는 보내는 응답
 
-app.get("/todos", async (req, res) => {
-  try {
+app.get(
+  "/todos",
+  catchAsync(async (req, res) => {
     const [result] = await db.query("SELECT * FROM todos");
     res.json(result);
-  } catch (err) {
-    console.error(err);
-    return res.status(500).json({ message: "데이터 조회 실패" });
-  }
-});
+    // } catch (err) {
+    //   console.error(err);
+    //   return res.status(500).json({ message: "데이터 조회 실패" });
+    // }
+  }),
+);
 // 전체 배열 출력
 
 // app.get("/todos", (req, res) => {
@@ -59,27 +67,25 @@ app.get("/todos", async (req, res) => {
 // });
 //”/todos” 주소로 GET 요청이 오면, 요청(req)을 받고 빈 배열([])을 JSON 형식으로 응답(res)해라.
 
-app.get("/todos/:id", async (req, res) => {
-  const id = Number(req.params.id);
+app.get(
+  "/todos/:id",
+  catchAsync(async (req, res) => {
+    const id = Number(req.params.id);
 
-  if (Number.isInteger(id) === false || id <= 0) {
-    return res.status(400).json({
-      message: "id는 1이상인 정수이어야 합니다",
-    });
-  }
+    if (Number.isInteger(id) === false || id <= 0) {
+      return res.status(400).json({
+        message: "id는 1이상인 정수이어야 합니다",
+      });
+    }
 
-  try {
     const [result] = await db.query("SELECT * FROM todos WHERE id = ?", [id]);
 
     if (result.length === 0)
       return res.status(404).json({ message: "값을 찾을 수 없습니다" });
 
     res.json(result[0]);
-  } catch (err) {
-    console.error(err);
-    return res.status(500).json({ message: "데이터 조회 실패" });
-  }
-});
+  }),
+);
 // id에 해당하는 객체 전체 출력
 
 // app.get("/todos/:id", (req, res) => {
@@ -97,23 +103,28 @@ app.get("/todos/:id", async (req, res) => {
 //   res.json(todo);
 // });
 
-app.post("/todos", async (req, res) => {
-  const { title, text } = req.body;
+app.post(
+  "/todos",
+  catchAsync(async (req, res) => {
+    const { title, text } = req.body;
 
-  if (title === undefined || typeof title !== "string" || title.trim() === "") {
-    return res.status(400).json({
-      message: "title은 비어 있지 않은 문자열이어야 합니다.",
-    });
-  }
-  if (text !== undefined) {
-    if (typeof text !== "string") {
+    if (
+      title === undefined ||
+      typeof title !== "string" ||
+      title.trim() === ""
+    ) {
       return res.status(400).json({
-        message: "text는 문자열 형식이어야 합니다.",
+        message: "title은 비어 있지 않은 문자열이어야 합니다.",
       });
     }
-  }
+    if (text !== undefined) {
+      if (typeof text !== "string") {
+        return res.status(400).json({
+          message: "text는 문자열 형식이어야 합니다.",
+        });
+      }
+    }
 
-  try {
     const [result] = await db.query(
       "INSERT INTO todos (title, text) VALUES (?,?)",
       [title, text],
@@ -126,10 +137,8 @@ app.post("/todos", async (req, res) => {
       completed: false,
     };
     res.status(201).json(newTodo);
-  } catch (err) {
-    res.status(500).json({ message: "데이터 조회 실패" });
-  }
-});
+  }),
+);
 
 // app.post("/todos", (req, res) => {
 //   const { text } = req.body; //req로 받는건 body밖에 없나?
@@ -144,92 +153,66 @@ app.post("/todos", async (req, res) => {
 //   res.json(newTodo);
 // });
 
-app.patch("/todos/:id", async (req, res) => {
-  const id = Number(req.params.id);
-  const { title, text, completed } = req.body;
+app.patch(
+  "/todos/:id",
+  catchAsync(async (req, res) => {
+    const id = Number(req.params.id);
+    const { title, text, completed } = req.body;
 
-  if (Number.isInteger(id) === false || id <= 0) {
-    return res.status(400).json({
-      message: "id는 1이상인 정수이어야 합니다",
-    });
-  }
-
-  const fields = [];
-  const values = [];
-
-  if (title !== undefined) {
-    if (typeof title !== "string" || title.trim() === "") {
+    if (Number.isInteger(id) === false || id <= 0) {
       return res.status(400).json({
-        message: "title은 비어 있지 않은 문자열이어야 합니다.",
+        message: "id는 1이상인 정수이어야 합니다",
       });
     }
-    fields.push("title = ?");
-    values.push(title);
-  }
-  if (text !== undefined) {
-    if (typeof text !== "string") {
+
+    const fields = [];
+    const values = [];
+
+    if (title !== undefined) {
+      if (typeof title !== "string" || title.trim() === "") {
+        return res.status(400).json({
+          message: "title은 비어 있지 않은 문자열이어야 합니다.",
+        });
+      }
+      fields.push("title = ?");
+      values.push(title);
+    }
+    if (text !== undefined) {
+      if (typeof text !== "string") {
+        return res.status(400).json({
+          message: "text는 문자열 형식이어야 합니다.",
+        });
+      }
+      fields.push("text = ?");
+      values.push(text);
+    }
+    if (completed !== undefined) {
+      if (typeof completed !== "boolean") {
+        return res.status(400).json({
+          message: "completed는 boolean 형식이어야 합니다.",
+        });
+      }
+      fields.push("completed = ?");
+      values.push(completed);
+    }
+    if (fields.length === 0) {
       return res.status(400).json({
-        message: "text는 문자열 형식이어야 합니다.",
+        message: "입력값이 없습니다",
       });
     }
-    fields.push("text = ?");
-    values.push(text);
-  }
-  if (completed !== undefined) {
-    if (typeof completed !== "boolean") {
-      return res.status(400).json({
-        message: "completed는 boolean 형식이어야 합니다.",
-      });
-    }
-    fields.push("completed = ?");
-    values.push(completed);
-  }
-  if (fields.length === 0) {
-    return res.status(400).json({
-      message: "입력값이 없습니다",
-    });
-  }
-  values.push(id);
+    values.push(id);
 
-  const sql = `UPDATE todos SET ${fields.join(", ")} WHERE id = ?`; //
+    const sql = `UPDATE todos SET ${fields.join(", ")} WHERE id = ?`; //
 
-  try {
     const [result] = await db.query(sql, values);
 
     if (result.affectedRows === 0)
       return res.status(404).json({ message: "값을 찾을 수 없습니다" });
 
     const [newTodo] = await db.query("SELECT * FROM todos WHERE id = ?", [id]);
-    console.log(newTodo);
     res.json(newTodo[0]);
-  } catch (err) {
-    console.error(err);
-    return res.status(500).json({ message: "데이터 조회 실패" });
-  }
-  // db.query(sql, values, (err, result) => {
-  //   if (err) {
-  //     console.error(err);
-  //     return res.status(500).json({
-  //       message: "Todo 수정 실패",
-  //     });
-  //   }
-  //   if (result.affectedRows === 0) {
-  //     return res.status(404).json({
-  //       message: "Todo를 찾을 수 없습니다.",
-  //     });
-  //   }
-
-  //   db.query("SELECT * FROM todos WHERE id = ?", [id], (err, results) => {
-  //     if (err) {
-  //       console.error(err);
-  //       return res.status(500).json({
-  //         message: "id 조회 실패",
-  //       });
-  //     }
-  //     res.json(results[0]);
-  //   });
-  // });
-});
+  }),
+);
 
 // app.patch("/todos/:id", (req, res) => {
 //   const id = Number(req.params.id);
@@ -250,16 +233,17 @@ app.patch("/todos/:id", async (req, res) => {
 //   res.json(todo);
 // });
 
-app.delete("/todos/:id", async (req, res) => {
-  const id = Number(req.params.id);
+app.delete(
+  "/todos/:id",
+  catchAsync(async (req, res) => {
+    const id = Number(req.params.id);
 
-  if (Number.isInteger(id) === false || id <= 0) {
-    //Number.isInteger 은 정수인지 아닌지 확인 후 boolean값 출력
-    return res.status(400).json({
-      message: "id는 1이상인 정수이어야 합니다",
-    });
-  }
-  try {
+    if (Number.isInteger(id) === false || id <= 0) {
+      //Number.isInteger 은 정수인지 아닌지 확인 후 boolean값 출력
+      return res.status(400).json({
+        message: "id는 1이상인 정수이어야 합니다",
+      });
+    }
     const [result] = await db.query("DELETE FROM todos WHERE id = ?", [id]);
     if (result.affectedRows === 0) {
       return res.status(404).json({
@@ -270,13 +254,8 @@ app.delete("/todos/:id", async (req, res) => {
       id: id,
       message: "Todo 삭제 성공",
     });
-  } catch (err) {
-    console.error(err);
-    return res.status(500).json({
-      message: "Todo 삭제 실패",
-    });
-  }
-});
+  }),
+);
 
 // app.delete("/todos/:id", (req, res) => {
 //   const id = Number(req.params.id);
@@ -296,6 +275,15 @@ app.delete("/todos/:id", async (req, res) => {
 //   res.json(deletedTodo);
 //   // 근데 제거한 객체를 반환할 필요가 있나 ?
 // });
+const globalErrorHandler = (err, req, res, next) => {
+  console.log(err);
+
+  return res.status(500).json({
+    message: "서버 에러가 발생했습니다.",
+  });
+};
+
+app.use(globalErrorHandler);
 
 app.listen(PORT, () => {
   console.log(`Server running on http://localhost:${PORT}`);
