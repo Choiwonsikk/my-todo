@@ -6,6 +6,10 @@ const cors = require("cors"); // 설치한 cors 패키지를 가져옴
 const app = express(); //Express 애플리케이션 객체를 생성
 const PORT = 3000;
 const todoRouter = require("./routes/todoRouter.js"); // app.js 와 router파일 참조
+const {
+  globalErrorHandler,
+  notFoundHandler,
+} = require("./middlewares/errorHandler.js");
 
 app.use(cors()); // CORS 설정을 Express에 적용
 app.use(express.json());
@@ -24,11 +28,12 @@ app.use("/todos", todoRouter);
 //   console.log("MySQL 연결 성공");
 // });
 
-const catchAsync = (func) => {
-  return (req, res, next) => {
-    func(req, res).catch((err) => next(err));
-  };
-};
+// const catchAsync = (func) => {
+//   return (req, res, next) => {
+//     func(req, res).catch((err) => next(err));
+//   };
+// };
+//promise 에서 reject 될 때 err 를 next로 넘기는 함수인데 express5부터 이 기능이 업데이트 되어서 안씀
 
 /*app.post("/todos", (req, res) => {
   const { text } = req.body;
@@ -40,6 +45,7 @@ const catchAsync = (func) => {
 */
 
 // app.get("/", (req, res) => {
+
 //   res.json({ message: "My Todo API" });
 // });
 
@@ -273,14 +279,8 @@ const catchAsync = (func) => {
 //   res.json(deletedTodo);
 //   // 근데 제거한 객체를 반환할 필요가 있나 ?
 // });
-const globalErrorHandler = (err, req, res, next) => {
-  console.log(err);
 
-  return res.status(500).json({
-    message: "서버 에러가 발생했습니다.",
-  });
-};
-
+app.use(notFoundHandler);
 app.use(globalErrorHandler);
 
 app.listen(PORT, () => {
