@@ -1,4 +1,6 @@
-require("dotenv").config();
+require("dotenv").config({
+  path: process.env.NODE_ENV === "test" ? ".env.test" : ".env",
+}); //dotenv.config()를, NODE_ENV가 "test"일 때 .env.test를 읽도록 바꿈
 
 const express = require("express"); //설치한 express 패키지를 현재 파일로 불러오는 코드     require("express"): Express 패키지를 가져옴
 const cors = require("cors"); // 설치한 cors 패키지를 가져옴
@@ -283,6 +285,9 @@ app.use("/todos", todoRouter);
 app.use(notFoundHandler);
 app.use(globalErrorHandler);
 
-app.listen(PORT, () => {
-  console.log(`Server running on http://localhost:${PORT}`);
-});
+if (require.main === module)
+  app.listen(PORT, () => {
+    console.log(`Server running on http://localhost:${PORT}`);
+  });
+
+module.exports = app;

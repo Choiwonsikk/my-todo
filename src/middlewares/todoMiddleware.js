@@ -25,7 +25,6 @@ const validateCreateTodo = (req, res, next) => {
       });
     }
   }
-
   return next();
 };
 
