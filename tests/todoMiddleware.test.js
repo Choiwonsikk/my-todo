@@ -442,6 +442,20 @@ describe("todoMiddleware", () => {
       });
       expect(next).not.toHaveBeenCalled();
     });
+
+    test("키워드가 아닌 배열일 경우 400반환", () => {
+      const req = { query: { keyword: ["공부", "운동"] } };
+      const res = { status: jest.fn().mockReturnThis(), json: jest.fn() };
+      const next = jest.fn();
+
+      validateKeywordFilter(req, res, next);
+
+      expect(res.status).toHaveBeenCalledWith(400);
+      expect(res.json).toHaveBeenCalledWith({
+        message: "keyword는 문자열이어야 합니다.",
+      });
+      expect(next).not.toHaveBeenCalled();
+    });
   });
 });
 //json()이 이 객체를 인자로 받아 호출됐는지 확인

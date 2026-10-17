@@ -131,16 +131,29 @@ const validateSortOrder = (req, res, next) => {
 };
 
 const validateKeywordFilter = (req, res, next) => {
-  if (req.query.keyword === undefined) {
+  const { keyword } = req.query;
+
+  // 검색어를 보내지 않으면 검색 조건 없이 진행
+  if (keyword === undefined) {
     return next();
   }
-  const keyword = req.query.keyword.trim();
-  if (keyword === "") {
+
+  // trim()을 호출하기 전에 문자열인지 확인
+  if (typeof req.query.keyword !== "string") {
+    return res.status(400).json({
+      message: "keyword는 문자열이어야 합니다.",
+    });
+  }
+
+  const trimmedKeyword = keyword.trim();
+
+  if (trimmedKeyword === "") {
     return res.status(400).json({
       message: "단어를 입력해주세요",
     });
   }
-  req.keywordFilter = keyword;
+
+  req.keywordFilter = trimmedKeyword;
   return next();
 
   //     req.query.keyword가 없으면 필터 없이 next()
